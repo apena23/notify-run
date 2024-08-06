@@ -4,7 +4,7 @@ Simple utility for running jobs with email notification on completion.
 
 ## Installation
 
-1. Copy the script into a directory and add to PATH.
+1. Copy the script into a directory, give yourself exec permissions, and add to PATH.
 2. Edit the script to use your email address.
 
 ## Usage

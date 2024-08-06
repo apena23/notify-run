@@ -2,6 +2,10 @@
 
 trap "" HUP
 
+### EDIT ME ###
+EMAIL=""
+### END EDIT ###
+
 BASENAME=$(basename "$0")
 
 usage="Usage:
@@ -25,9 +29,9 @@ Options:
 CMD=$1
 NAME=$2
 
-LOGFILE_DIR=/home/apena23/"$BASENAME"_logs
+LOGFILE_DIR=$HOME/"$BASENAME"_logs
 mkdir -p $LOGFILE_DIR
-BASE_DIR=/home/apena23/."$BASENAME"
+BASE_DIR=$HOME/."$BASENAME"
 mkdir -p $BASE_DIR &> /dev/null
 JOBTABLE_RUNNING="$BASE_DIR"/running.jobs
 touch $JOBTABLE_RUNNING
@@ -146,7 +150,7 @@ Logfile:\n\n$logfile\n\n\n
 ("$BASENAME")
 "
     mail_subj="Command finished: $NAME"
-    echo -e "$mail_body" | mailx -s "$mail_subj" apena23@stanford.edu
+    echo -e "$mail_body" | mailx -s "$mail_subj" $EMAIL
     remove_from_running_table $PID
     echo -e "$PID\t$NAME\t$TIMESTAMP_START\t$TIMESTAMP_END\t$EXITCODE\t$logfile\t\"$CMD\"" >> $JOBTABLE_FINISHED
 }

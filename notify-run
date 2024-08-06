@@ -1,0 +1,156 @@
+#!/bin/bash
+
+trap "" HUP
+
+BASENAME=$(basename "$0")
+
+usage="Usage:
+  $BASENAME [COMMAND] [JOB_NAME]
+  $BASENAME [OPTION]
+
+Run COMMAND in the background, logging to a logfile generated using the timestamp and JOB_NAME;
+when done, send an email to the specified address.
+
+Any option provided will quit without starting the command.
+
+If JOB_NAME is not provided, one will be auto-generated from the first word in COMMAND.
+
+Options:
+    -f N  show last N jobs finished
+    -h    show help text (this)
+    -l    show running jobs
+    -r    read logfile for most recently started job using less
+    -s N  show last N jobs started"
+
+CMD=$1
+NAME=$2
+
+LOGFILE_DIR=/home/apena23/"$BASENAME"_logs
+mkdir -p $LOGFILE_DIR
+BASE_DIR=/home/apena23/."$BASENAME"
+mkdir -p $BASE_DIR &> /dev/null
+JOBTABLE_RUNNING="$BASE_DIR"/running.jobs
+touch $JOBTABLE_RUNNING
+JOBTABLE_STARTED="$BASE_DIR"/started.jobs
+touch $JOBTABLE_STARTED
+JOBTABLE_FINISHED="$BASE_DIR"/finished.jobs
+touch $JOBTABLE_FINISHED
+
+color_table () {
+  NAME_COLOR="\033[1;32m"
+  END_COLOR="\033[0m"
+
+  FILE=$1
+
+  awk -F $'\t' '
+    {
+      printf "%s\t'$NAME_COLOR'%s'$END_COLOR'", $1, $2;
+      for (i = 3; i <= NF; i++) {printf "\t%s", $i};
+      printf "\n"
+    }' $FILE
+}
+
+display_jobs_running () {
+    for p in $(cut -d $'\t' -f 1 $JOBTABLE_RUNNING)
+    do
+      if ! ps -p $p > /dev/null; then remove_from_running_table $p; fi
+    done
+    color_table $JOBTABLE_RUNNING | column -t -s $'\t' -N PID,NAME,START,LOGFILE,CMD
+}
+
+remove_from_running_table () {
+    PID=$1
+    sed "/^$PID/d" $JOBTABLE_RUNNING > $JOBTABLE_RUNNING.temp && mv $JOBTABLE_RUNNING.temp $JOBTABLE_RUNNING
+}
+
+display_jobs_started () {
+    NUM=$1
+    if [ "$NUM" == "" ]; then NUM="10"; fi
+    color_table $JOBTABLE_STARTED | tail -n $NUM | column -t -s $'\t' -N PID,NAME,START,LOGFILE,CMD
+}
+
+display_jobs_finished () {
+    NUM=$1
+    if [ "$NUM" == "" ]; then NUM="10"; fi
+    color_table $JOBTABLE_FINISHED | tail -n $NUM | column -t -s $'\t' -N PID,NAME,START,END,EXIT,LOGFILE,CMD
+}
+
+open_latest_logfile () {
+    logfile=$(tail -n 1 $JOBTABLE_STARTED | sed "s/\t/\n/g" | sed "4q;d")
+    echo "Opening $logfile"
+    less $logfile
+}
+
+while getopts "lrhs:f:" opt
+do
+  case $opt in
+     l)
+       display_jobs_running
+       exit 0
+       ;;
+     r)
+       open_latest_logfile
+       exit 0
+       ;;
+     h)
+       echo "$usage"
+       exit 0
+       ;;
+     s)
+       display_jobs_started $OPTARG
+       exit 0
+       ;;
+     f)
+       display_jobs_finished $OPTARG
+       exit 0
+       ;;
+     *)
+       echo "Error: Invalid options." >&2
+       echo "$usage"
+       exit 1
+       ;;
+  esac
+done
+
+if [ "$CMD" = "" ]
+then
+    echo "Error: Specify a command." >&2
+    echo "$usage"
+    exit 1
+fi
+
+TIMESTAMP_START=$(date "+%Y.%m.%d_%H:%M:%S")
+if [ "$NAME" == "" ]
+then
+    CMD_WORDS=( $CMD )
+    NAME=${CMD_WORDS[0]}
+fi
+logfile="$LOGFILE_DIR/$TIMESTAMP_START.$NAME.log"
+
+run() {
+    eval $CMD &> $logfile &
+    PID=$!
+    echo -e "$PID\t$NAME\t$TIMESTAMP_START\t$logfile\t\"$CMD\"" >> $JOBTABLE_STARTED
+    echo -e "$PID\t$NAME\t$TIMESTAMP_START\t$logfile\t\"$CMD\"" >> $JOBTABLE_RUNNING
+    wait $PID
+    EXITCODE=$?
+    TIMESTAMP_END=$(date "+%Y.%m.%d_%H:%M:%S")
+    mail_body="
+Your command has finished.\n\n\n
+Name: $NAME\n
+Command:\n\n$CMD\n
+Start: $TIMESTAMP_START\n
+End: $TIMESTAMP_END\n
+Exit code: $EXITCODE\n
+Logfile:\n\n$logfile\n\n\n
+("$BASENAME")
+"
+    mail_subj="Command finished: $NAME"
+    echo -e "$mail_body" | mailx -s "$mail_subj" apena23@stanford.edu
+    remove_from_running_table $PID
+    echo -e "$PID\t$NAME\t$TIMESTAMP_START\t$TIMESTAMP_END\t$EXITCODE\t$logfile\t\"$CMD\"" >> $JOBTABLE_FINISHED
+}
+
+run &
+sleep 1
+display_jobs_started 1

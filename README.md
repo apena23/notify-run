@@ -2,7 +2,12 @@
 
 Simple utility for running jobs with email notification on completion.
 
-Usage:
+## Installation
+
+1. Copy the script into a directory and add to PATH.
+2. Edit the script to use your email address.
+
+## Usage
 
 `notify-run "command" {name}`
 

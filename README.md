@@ -4,7 +4,7 @@ Simple utility for running jobs with email notification on completion.
 
 ## Installation
 
-1. Copy the script into a directory and add to PATH.
+1. Copy the script into a directory, give yourself exec permissions, and add to PATH.
 2. Edit the script to use your email address.
 
 ## Usage
@@ -13,7 +13,7 @@ Simple utility for running jobs with email notification on completion.
 
 If no name, one will be created based on the first word of the command.
 
-`notify-run -r` Open the log file in real time.
+`notify-run -r` Open the log file for the most recently started job.
 
 `notify-run -l` Print running jobs.
 

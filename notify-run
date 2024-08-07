@@ -2,42 +2,43 @@
 
 trap "" HUP
 
-### EDIT ME ###
-EMAIL=""
-### END EDIT ###
+set -eo pipefail
 
 BASENAME=$(basename "$0")
 
-usage="Usage:
-  $BASENAME [COMMAND] [JOB_NAME]
-  $BASENAME [OPTION]
+usage="
+Usage:
+  $BASENAME [options] COMMAND...
 
-Run COMMAND in the background, logging to a logfile generated using the timestamp and JOB_NAME;
-when done, send an email to the specified address.
-
-Any option provided will quit without starting the command.
-
-If JOB_NAME is not provided, one will be auto-generated from the first word in COMMAND.
+Run COMMAND in the background, logging to a logfile generated using the timestamp and a job name.
+When done, send an email to the address in \$NR_EMAIL.
 
 Options:
-    -f N  show last N jobs finished
-    -h    show help text (this)
-    -l    show running jobs
-    -r    read logfile for most recently started job using less
-    -s N  show last N jobs started"
+    -E       omit email notification
+    -f N     show last N jobs finished
+    -h       show help text
+    -l       show running jobs
+    -n name  give your job a name
+    -r       read logfile for most recently started job using less
+    -s N     show last N jobs started
+"
 
-CMD=$1
-NAME=$2
+if [ "$NR_BASEDIR" == "" ]; then
+    BASE_DIR=$HOME/$BASENAME
+    mkdir -p $BASE_DIR
+else
+    BASE_DIR=$NR_BASEDIR
+fi
 
-LOGFILE_DIR=$HOME/"$BASENAME"_logs
+LOGFILE_DIR=$BASE_DIR/logs
 mkdir -p $LOGFILE_DIR
-BASE_DIR=$HOME/."$BASENAME"
-mkdir -p $BASE_DIR &> /dev/null
-JOBTABLE_RUNNING="$BASE_DIR"/running.jobs
+JOB_DIR=$BASE_DIR/.jobs
+mkdir -p $JOB_DIR
+JOBTABLE_RUNNING=$JOB_DIR/running
 touch $JOBTABLE_RUNNING
-JOBTABLE_STARTED="$BASE_DIR"/started.jobs
+JOBTABLE_STARTED=$JOB_DIR/started
 touch $JOBTABLE_STARTED
-JOBTABLE_FINISHED="$BASE_DIR"/finished.jobs
+JOBTABLE_FINISHED=$JOB_DIR/finished
 touch $JOBTABLE_FINISHED
 
 color_table () {
@@ -85,51 +86,62 @@ open_latest_logfile () {
     less $logfile
 }
 
-while getopts "lrhs:f:" opt
-do
-  case $opt in
-     l)
-       display_jobs_running
-       exit 0
-       ;;
-     r)
-       open_latest_logfile
-       exit 0
-       ;;
-     h)
-       echo "$usage"
-       exit 0
-       ;;
-     s)
-       display_jobs_started $OPTARG
-       exit 0
-       ;;
-     f)
-       display_jobs_finished $OPTARG
-       exit 0
-       ;;
-     *)
-       echo "Error: Invalid options." >&2
-       echo "$usage"
-       exit 1
-       ;;
-  esac
+SETNAME=false
+
+while getopts "Ef:hln:rs:" opt; do
+    case $opt in
+        E)
+            EMAIL="false"
+            ;;
+        f)
+            display_jobs_finished $OPTARG
+            exit 0
+            ;;
+        h)
+            echo "$usage"
+            exit 0
+            ;;
+        l)
+            display_jobs_running
+            exit 0
+            ;;
+        n)
+            NAME=$OPTARG
+            ;;
+        r)
+            open_latest_logfile
+            exit 0
+            ;;
+        s)
+            display_jobs_started $OPTARG
+            exit 0
+            ;;
+        *)
+            echo "Error: Invalid options." >&2
+            echo "$usage"
+            exit 1
+            ;;
+    esac
 done
 
-if [ "$CMD" = "" ]
-then
-    echo "Error: Specify a command." >&2
-    echo "$usage"
-    exit 1
-fi
+shift $(($OPTIND - 1))
 
-TIMESTAMP_START=$(date "+%Y.%m.%d_%H:%M:%S")
+CMD="$@"
+
+DATE_FMT="+%Y%m%d_%H%M%S"
+
+TIMESTAMP_START=$(date $DATE_FMT)
 if [ "$NAME" == "" ]
 then
     CMD_WORDS=( $CMD )
     NAME=${CMD_WORDS[0]}
 fi
 logfile="$LOGFILE_DIR/$TIMESTAMP_START.$NAME.log"
+
+if [ "$NR_EMAIL" == "" ]; then
+    echo "Note: No email specified in \$NR_EMAIL. Command will be run without email notification."
+    EMAIL="false"
+fi
 
 run() {
     eval $CMD &> $logfile &
@@ -138,7 +150,7 @@ run() {
     echo -e "$PID\t$NAME\t$TIMESTAMP_START\t$logfile\t\"$CMD\"" >> $JOBTABLE_RUNNING
     wait $PID
     EXITCODE=$?
-    TIMESTAMP_END=$(date "+%Y.%m.%d_%H:%M:%S")
+    TIMESTAMP_END=$(date $DATE_FMT)
     mail_body="
 Your command has finished.\n\n\n
 Name: $NAME\n
@@ -150,11 +162,12 @@ Logfile:\n\n$logfile\n\n\n
 ("$BASENAME")
 "
     mail_subj="Command finished: $NAME"
-    echo -e "$mail_body" | mailx -s "$mail_subj" $EMAIL
+    if [ ! $EMAIL == "false" ]; then
+        echo -e "$mail_body" | mailx -s "$mail_subj" $NR_EMAIL
+    fi
     remove_from_running_table $PID
     echo -e "$PID\t$NAME\t$TIMESTAMP_START\t$TIMESTAMP_END\t$EXITCODE\t$logfile\t\"$CMD\"" >> $JOBTABLE_FINISHED
 }
 
 run &
-sleep 1
 display_jobs_started 1

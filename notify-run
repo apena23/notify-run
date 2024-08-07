@@ -87,11 +87,12 @@ open_latest_logfile () {
 }
 
 SETNAME=false
+EMAIL=true
 
 while getopts "Ef:hln:rs:" opt; do
     case $opt in
         E)
-            EMAIL="false"
+            EMAIL=false
             ;;
         f)
             display_jobs_finished $OPTARG
@@ -140,7 +141,7 @@ logfile="$LOGFILE_DIR/$TIMESTAMP_START.$NAME.log"
 
 if [ "$NR_EMAIL" == "" ]; then
     echo "Note: No email specified in \$NR_EMAIL. Command will be run without email notification."
-    EMAIL="false"
+    EMAIL=false
 fi
 
 run() {
@@ -162,7 +163,7 @@ Logfile:\n\n$logfile\n\n\n
 ("$BASENAME")
 "
     mail_subj="Command finished: $NAME"
-    if [ ! $EMAIL == "false" ]; then
+    if [ $EMAIL ]; then
         echo -e "$mail_body" | mailx -s "$mail_subj" $NR_EMAIL
     fi
     remove_from_running_table $PID

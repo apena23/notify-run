@@ -4,7 +4,7 @@ Simple utility for running jobs with email notification on completion.
 
 ## Installation
 
-1. Download the script into some directory (e.g. `$HOME/bin`) and give yourself exec permissions.
+1. Download the script into some directory (e.g. `$HOME/scripts`) and give yourself exec permissions.
 2. Copy the following to your `~/.bashrc`
 
 ```

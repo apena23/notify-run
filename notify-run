@@ -2,8 +2,6 @@
 
 trap "" HUP
 
-set -eo pipefail
-
 BASENAME=$(basename "$0")
 
 usage="

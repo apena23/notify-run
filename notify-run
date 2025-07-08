@@ -28,6 +28,10 @@ else
     BASE_DIR=$NR_BASEDIR
 fi
 
+if [ "$NR_SYSNAME" == "" ]; then
+    SYSNAME=$(cat /etc/hostname)
+fi
+
 LOGFILE_DIR=$BASE_DIR/logs
 mkdir -p $LOGFILE_DIR
 JOB_DIR=$BASE_DIR/.jobs
@@ -84,7 +88,6 @@ open_latest_logfile () {
     less $logfile
 }
 
-SETNAME=false
 EMAIL=true
 
 while getopts "Ef:hln:rs:" opt; do
@@ -154,14 +157,15 @@ run() {
 Your command has finished.\n\n\n
 Name: $NAME\n
 Command:\n\n$CMD\n
+Host: $SYSNAME\n
 Start: $TIMESTAMP_START\n
 End: $TIMESTAMP_END\n
 Exit code: $EXITCODE\n
 Logfile:\n\n$logfile\n\n\n
 ("$BASENAME")
 "
-    mail_subj="Command finished: $NAME"
-    if [ $EMAIL ]; then
+    mail_subj="Command finished [$EXITCODE]: $NAME ($SYSNAME)"
+    if [ $EMAIL == true ]; then
         echo -e "$mail_body" | mailx -s "$mail_subj" $NR_EMAIL
     fi
     remove_from_running_table $PID

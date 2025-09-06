@@ -1,6 +1,8 @@
 # notify-run
 
-Simple utility for running jobs with email notification on completion.
+Simple Linux utility for running jobs in the background, with email notification on completion.
+
+Job output is saved into logfiles that can be accessed at any time.
 
 Sending emails requires `mailx` installed.
 

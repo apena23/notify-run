@@ -8,19 +8,12 @@ Sending emails requires `mailx` installed.
 
 ## Installation
 
-1. Download the script into some directory (e.g. `$HOME/scripts`) and give yourself exec permissions.
-2. Copy the following to your `~/.bashrc` and edit the variables in []
-
 ```
-# notify-run
-export PATH=$PATH:[PATH_TO_SCRIPT_DIRECTORY]
-export NR_EMAIL=[YOUR_EMAIL]
-# Uncomment these lines to change other options:
-# NR_BASEDIR=[BASE_DIR]     # directory for logfiles and job tables, if not $HOME/notify-run
-# NR_SYSNAME=[SYSNAME]      # system name for email notifications, if not /etc/hostname
+cd $HOME
+git clone https://github.com/apena23/notify-run
+cd notify-run
+bash install.sh
 ```
-
-3. In terminal run `source ~/.bashrc`
 
 ## Usage
 ```

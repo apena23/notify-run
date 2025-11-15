@@ -4,7 +4,7 @@ SCRIPT_DIR=$(pwd)
 
 echo "Directory for logfiles and job tables (leave blank for $HOME/notify-run):"
 read BASE_DIR
-echo "Email (leave blank to omit emails):"
+echo "Email address (leave blank to omit emails):"
 read EMAIL
 echo "System name (leave blank for /etc/hostname):"
 read SYS_NAME
